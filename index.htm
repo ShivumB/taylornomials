@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<!-- This is based on DillingerLee's great template here:
+https://github.com/Team-Code/KA_Offline -->
+<html> 
+ <head>
+    <title>Taylor Polynomials</title> 
+</head>
+ <body>
+    <p align="center"> 
+	<!--This draws the Canvas on the webpage -->
+      <canvas id="mycanvas"></canvas> 
+    </p>
+ </body>
+ 
+ <!-- Run all the JavaScript stuff -->
+ <!-- Include the processing.js library -->
+ <!-- See https://khanacademy.zendesk.com/hc/en-us/articles/202260404-What-parts-of-ProcessingJS-does-Khan-Academy-support- for differences -->
+ <script src="https://cdn.jsdelivr.net/processing.js/1.4.8/processing.min.js"></script> 
+ 
+ <script>
+    var sketchProc = function(processingInstance) {
+     with (processingInstance) {
+        size(600, 600); 
+        frameRate(60);
+
+//Made by Shivum Banerjee, 17 Jan 2021
+/***
+This project is in progress--if you would like to use this, look at my documentation, create your function, and make it into a Taylor polynomial, integrate it, take the nth derivative, or graph it. Have fun!
+***/
+//Play with the accuracy for better results
+var lineCount = 20;
+var scaleBy = 1*lineCount;
+var accuracy = pow(10,-3);
+var scene = "graph";
+var updateMenu = true;
+var updateGraph = true;
+var updateInput = true;
+angleMode = "radians";
+textFont(createFont("cursive"));
+
+//graph(function) return void
+var graph = function(f) {
+    pushMatrix();
+    translate(width/2,height/2);
+
+    for(var i = -300/scaleBy; i < 300/scaleBy; i+= accuracy) {
+        var y1 = -f(i);
+        var y2 = -f(i+accuracy);
+        
+        if(!isNaN(y1) && !isNaN(y2)) {
+        line(i*scaleBy,y1*scaleBy,(i+accuracy)*scaleBy,y2*scaleBy);
+        }
+    }
+    popMatrix();
+    
+};
+
+//derivative(function,aroundSomePoint,nthDerivative) return num
+var derivative = function(f,t,n) {
+    //variables
+    var terms = [];
+    
+    //checks for bad inputs
+    if(isNaN(n) || n < 0) {
+        println("The input could not be interpreted.");   
+        return;
+    }
+    n = round(n);
+    if(n === 0) {
+        return f(t);
+    }
+    
+    for(var i = 0; i < n+1; i++) {
+        terms[i] = [];
+        var variance = (-n+2*i)*accuracy;
+        terms[0][i] = new PVector(t+variance,f(t+variance));
+    }
+    
+    for(var j = 0; j < n; j++) {
+        for(var i = 0; i < n-j; i++) {
+            var xPos1 = terms[j][i].x;
+            var xPos2 = terms[j][i+1].x;
+            var m = (terms[j][i+1].y-terms[j][i].y)/(xPos2-xPos1);
+            terms[j+1][i] = new PVector((xPos1+xPos2)/2,m);
+        }
+    }
+    return terms[n][0].y;
+};
+
+//factorial(int) return num
+var factorial = function(x) {
+    var multBase = 1;
+    var multTimes = 0;
+    while(multTimes < x) {
+        multBase *= ++multTimes;   
+    }
+    return multBase;
+};
+
+//taylorPoly(function,aroundSomePoint,amountOfTerms,printPoly) return f(x) as polynomial
+var taylorPoly = function(f,t,n,returnTerms) {
+    var terms = [];
+    
+    if(isNaN(n)) {
+        n = 3;   
+    }
+    
+    for(var i = 0; i < n+1; i++) {
+        terms[i] = derivative(f,t,i)/factorial(i);
+    }
+    
+    var g = function(x) {
+        var addBase = 0;
+        for(var i = 0; i < terms.length; i++) {
+            addBase += terms[i]*pow(x-t,i);
+        }
+        return addBase;
+    };
+    
+    if(returnTerms) {
+        var stringBase = "";
+        for(var i = 0; i < terms.length; i++) {
+            stringBase += "+" + terms[i] + "x^" + i +" ";
+        }
+        println(stringBase);
+    }
+    
+    return g;
+    
+};
+
+//integrate(f) from alpha to beta
+var integrate = function(f,alpha,beta,unsigned) {
+    var addBase = 0;
+    
+    if(beta < alpha) {
+        var temp = alpha;
+        alpha = beta;
+        beta = temp;
+    }
+    
+    pushMatrix();
+    translate(width/2,height/2);
+    
+    if(!unsigned) {
+        for(var i = alpha; i < beta; i += pow(10,-3)) {
+            addBase += f(i)*pow(10,-3);
+            rect(i*scaleBy,0,pow(10,-3),-f(i+pow(10,-3))*scaleBy);
+        }
+    } else {
+        for(var i = alpha; i < beta; i += pow(10,-3)) {
+            addBase += abs(f(i)*pow(10,-3));
+            rect(i*scaleBy,-f(i)*scaleBy,(i+pow(10,-3))*scaleBy,-f(i+pow(10,-3))*scaleBy);
+        }
+    }
+    popMatrix();
+    
+    return addBase;
+    
+};
+
+//enter your own function & experiment
+var userInput = function(x) {
+    return sin(x);
+};
+
+draw = function() {
+    switch(scene) {
+        case "title":
+            if(updateMenu) {
+                background(0,255,0,105);
+                textSize(60);
+                fill(0);
+                text("Talyornomials",10,100);
+                textSize(20);
+                text("By Shivum B.",25,150);
+
+                accuracy = pow(10,-1);
+                stroke(0);
+                strokeWeight(6);
+                graph(sin);
+                
+                stroke(255);
+                strokeWeight(2);
+                graph(taylorPoly(sin,0,17));
+                updateMenu = false;
+                
+                mouseClicked = function() {
+                    if(mouseX > 450 && mouseX < 550 && mouseY > 500 && mouseY < 550) {
+                        scene = "input";   
+                        updateInput = true;
+                    }
+                };
+            }
+            
+            stroke(0);
+            if(mouseX > 450 && mouseX < 550 && mouseY > 500 && mouseY < 550) { 
+                fill(90);
+            } else {
+                fill(255);
+            }
+            rect(450,500,100,50,10);
+            fill(0);
+            text("Start",472,530);
+            
+        break;
+        
+        case "input":
+            if(updateInput) {
+                background(0,175,255,105);
+                
+                fill(0);
+                textSize(50);
+                text("Enter your function",50,100);
+                
+                textSize(25);
+                text("f(x) = ",260,150);
+                
+                fill(255,150);
+                noStroke();
+                rect(20,180,560,300,10);
+                updateInput = false;
+            }
+        break;
+        
+        case "graph":
+            if(updateGraph) {
+                background(255, 0, 0,100);
+                strokeWeight(0.4);
+                stroke(0);
+                for(var i = 0; i < width/lineCount; i++) {
+                    line(i*lineCount,0,i*lineCount,height);
+                    line(0,i*lineCount,height,i*lineCount);
+                }
+                strokeWeight(2);
+                line(0,height/2,width,height/2);
+                line(width/2,0,width/2,height);
+                scaleBy = 1*lineCount;
+                updateGraph = false;
+                
+                mouseClicked = function() {
+                    
+                };
+            }
+            
+        break;
+    }
+    noLoop();
+};
+
+scaleBy = 1*20;
+accuracy = 0.1;
+
+fill(255);
+noStroke();
+println(integrate(userInput,-Math.PI,Math.PI));
+
+stroke(0);
+strokeWeight(4);
+graph(userInput);
+
+//mess with the accuracy
+accuracy = 0.35;
+stroke(255);
+strokeWeight(1);
+graph(taylorPoly(userInput,0,45));
+
+
+
+    }};
+
+    // Get the canvas that Processing-js will use
+    var canvas = document.getElementById("mycanvas"); 
+    // Pass the function sketchProc (defined in myCode.js) to Processing's constructor.
+    var processingInstance = new Processing(canvas, sketchProc); 
+ </script>
+
+</html>
